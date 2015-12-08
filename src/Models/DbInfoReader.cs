@@ -53,42 +53,48 @@ namespace DbSpace.Models
 		private bool GetDbInfo(SqlConnection con, string dbName, out DbInfo result)
 		{
 			result = null;
-			SqlCommand cmd = new SqlCommand("sp_helpdb", con);
-			cmd.CommandType = CommandType.StoredProcedure;
-			cmd.Parameters.Add(new SqlParameter("@dbname", dbName));
-			SqlDataAdapter a = new SqlDataAdapter(cmd);
-			DataSet ds = new DataSet();
-			a.Fill(ds);
-			if (ds.Tables.Count != 2)
-				return false;
-
-			var databaseInfo = ds.Tables[0];
-			if (databaseInfo.Rows.Count == 0)
-				return false;
-			var row = databaseInfo.Rows[0];
-			string db_size = Convert.ToString(row[databaseInfo.Columns["db_size"].Ordinal]).Trim();
-			string owner = Convert.ToString(row[databaseInfo.Columns["owner"].Ordinal]);
-			int dbid = Convert.ToInt32(row[databaseInfo.Columns["dbid"].Ordinal]);
-			string created = Convert.ToString(row[databaseInfo.Columns["created"].Ordinal]);
-			string status = Convert.ToString(row[databaseInfo.Columns["status"].Ordinal]);
-			int compatibility_level = Convert.ToInt32(row[databaseInfo.Columns["compatibility_level"].Ordinal]);
-
-			result = new DbInfo(dbName, db_size, owner, dbid, created, status, compatibility_level);
-			var filesInfo = ds.Tables[1];
-			foreach (DataRow fiRow in filesInfo.Rows)
+			using (SqlCommand cmd = new SqlCommand("sp_helpdb", con))
 			{
-				string name = Convert.ToString(fiRow[filesInfo.Columns["name"].Ordinal]);
-				int fileid = Convert.ToInt32(fiRow[filesInfo.Columns["fileid"].Ordinal]);
-				string filename = Convert.ToString(fiRow[filesInfo.Columns["filename"].Ordinal]);
-				string filegroup = Convert.ToString(fiRow[filesInfo.Columns["filegroup"].Ordinal]);
-				string size = Convert.ToString(fiRow[filesInfo.Columns["size"].Ordinal]);
-				string maxsize = Convert.ToString(fiRow[filesInfo.Columns["maxsize"].Ordinal]);
-				string growth = Convert.ToString(fiRow[filesInfo.Columns["growth"].Ordinal]);
-				string usage = Convert.ToString(fiRow[filesInfo.Columns["usage"].Ordinal]);
-				DbFile dbFile = new DbFile(name, fileid, filename, filegroup, size, maxsize, growth, usage, dbName);
-				result.AddFile(dbFile);
+				cmd.CommandType = CommandType.StoredProcedure;
+				cmd.Parameters.Add(new SqlParameter("@dbname", dbName));
+				using (SqlDataAdapter a = new SqlDataAdapter(cmd))
+				{
+					using (DataSet ds = new DataSet())
+					{
+						a.Fill(ds);
+						if (ds.Tables.Count != 2)
+							return false;
+
+						var databaseInfo = ds.Tables[0];
+						if (databaseInfo.Rows.Count == 0)
+							return false;
+						var row = databaseInfo.Rows[0];
+						string db_size = Convert.ToString(row[databaseInfo.Columns["db_size"].Ordinal]).Trim();
+						string owner = Convert.ToString(row[databaseInfo.Columns["owner"].Ordinal]);
+						int dbid = Convert.ToInt32(row[databaseInfo.Columns["dbid"].Ordinal]);
+						string created = Convert.ToString(row[databaseInfo.Columns["created"].Ordinal]);
+						string status = Convert.ToString(row[databaseInfo.Columns["status"].Ordinal]);
+						int compatibility_level = Convert.ToInt32(row[databaseInfo.Columns["compatibility_level"].Ordinal]);
+
+						result = new DbInfo(dbName, db_size, owner, dbid, created, status, compatibility_level);
+						var filesInfo = ds.Tables[1];
+						foreach (DataRow fiRow in filesInfo.Rows)
+						{
+							string name = Convert.ToString(fiRow[filesInfo.Columns["name"].Ordinal]);
+							int fileid = Convert.ToInt32(fiRow[filesInfo.Columns["fileid"].Ordinal]);
+							string filename = Convert.ToString(fiRow[filesInfo.Columns["filename"].Ordinal]);
+							string filegroup = Convert.ToString(fiRow[filesInfo.Columns["filegroup"].Ordinal]);
+							string size = Convert.ToString(fiRow[filesInfo.Columns["size"].Ordinal]);
+							string maxsize = Convert.ToString(fiRow[filesInfo.Columns["maxsize"].Ordinal]);
+							string growth = Convert.ToString(fiRow[filesInfo.Columns["growth"].Ordinal]);
+							string usage = Convert.ToString(fiRow[filesInfo.Columns["usage"].Ordinal]);
+							DbFile dbFile = new DbFile(name, fileid, filename, filegroup, size, maxsize, growth, usage, dbName);
+							result.AddFile(dbFile);
+						}
+						return true;
+					}
+				}
 			}
-			return true;
 		}
 		private List<string> GetAllDatabases(SqlConnection con)
 		{
